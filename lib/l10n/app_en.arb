@@ -85,5 +85,18 @@
   "taskDeleteMessage": "Delete task \"{title}\"? This cannot be undone.",
   "taskDeleteConfirmButton": "Delete",
   "workspaceReloadButton": "Reload workspaces",
-  "taskReloadButton": "Reload tasks"
+  "taskReloadButton": "Reload tasks",
+  "taskSearchHint": "Search tasks...",
+  "taskClearSearch": "Clear search",
+  "taskFilterAll": "All",
+  "taskFilterStatusLabel": "Status",
+  "taskFilterPriorityLabel": "Priority",
+  "taskSortLabel": "Sort by",
+  "taskSortTitle": "Title",
+  "taskSortStatus": "Status",
+  "taskSortPriority": "Priority",
+  "taskSortAsc": "Ascending",
+  "taskSortDesc": "Descending",
+  "taskFiltersReset": "Reset",
+  "taskNoResults": "No tasks match your filters."
 }

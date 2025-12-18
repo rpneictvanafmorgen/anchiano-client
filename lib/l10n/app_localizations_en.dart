@@ -275,4 +275,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get taskReloadButton => 'Reload tasks';
+
+  @override
+  String get taskSearchHint => 'Search tasks...';
+
+  @override
+  String get taskClearSearch => 'Clear search';
+
+  @override
+  String get taskFilterAll => 'All';
+
+  @override
+  String get taskFilterStatusLabel => 'Status';
+
+  @override
+  String get taskFilterPriorityLabel => 'Priority';
+
+  @override
+  String get taskSortLabel => 'Sort by';
+
+  @override
+  String get taskSortTitle => 'Title';
+
+  @override
+  String get taskSortStatus => 'Status';
+
+  @override
+  String get taskSortPriority => 'Priority';
+
+  @override
+  String get taskSortAsc => 'Ascending';
+
+  @override
+  String get taskSortDesc => 'Descending';
+
+  @override
+  String get taskFiltersReset => 'Reset';
+
+  @override
+  String get taskNoResults => 'No tasks match your filters.';
 }

@@ -85,5 +85,18 @@
   "taskDeleteMessage": "Taak \"{title}\" verwijderen? Dit kan niet ongedaan worden gemaakt.",
   "taskDeleteConfirmButton": "Verwijderen",
   "workspaceReloadButton": "Workspaces vernieuwen",
-  "taskReloadButton": "Taken vernieuwen"
+  "taskReloadButton": "Taken vernieuwen",
+  "taskSearchHint": "Zoek taken...",
+  "taskClearSearch": "Zoekopdracht wissen",
+  "taskFilterAll": "Alles",
+  "taskFilterStatusLabel": "Status",
+  "taskFilterPriorityLabel": "Prioriteit",
+  "taskSortLabel": "Sorteren op",
+  "taskSortTitle": "Titel",
+  "taskSortStatus": "Status",
+  "taskSortPriority": "Prioriteit",
+  "taskSortAsc": "Oplopend",
+  "taskSortDesc": "Aflopend",
+  "taskFiltersReset": "Reset",
+  "taskNoResults": "Geen taken gevonden met deze filters."
 }

@@ -275,4 +275,43 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get taskReloadButton => 'Taken vernieuwen';
+
+  @override
+  String get taskSearchHint => 'Zoek taken...';
+
+  @override
+  String get taskClearSearch => 'Zoekopdracht wissen';
+
+  @override
+  String get taskFilterAll => 'Alles';
+
+  @override
+  String get taskFilterStatusLabel => 'Status';
+
+  @override
+  String get taskFilterPriorityLabel => 'Prioriteit';
+
+  @override
+  String get taskSortLabel => 'Sorteren op';
+
+  @override
+  String get taskSortTitle => 'Titel';
+
+  @override
+  String get taskSortStatus => 'Status';
+
+  @override
+  String get taskSortPriority => 'Prioriteit';
+
+  @override
+  String get taskSortAsc => 'Oplopend';
+
+  @override
+  String get taskSortDesc => 'Aflopend';
+
+  @override
+  String get taskFiltersReset => 'Reset';
+
+  @override
+  String get taskNoResults => 'Geen taken gevonden met deze filters.';
 }

@@ -610,6 +610,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reload tasks'**
   String get taskReloadButton;
+
+  /// No description provided for @taskSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search tasks...'**
+  String get taskSearchHint;
+
+  /// No description provided for @taskClearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get taskClearSearch;
+
+  /// No description provided for @taskFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get taskFilterAll;
+
+  /// No description provided for @taskFilterStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get taskFilterStatusLabel;
+
+  /// No description provided for @taskFilterPriorityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get taskFilterPriorityLabel;
+
+  /// No description provided for @taskSortLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by'**
+  String get taskSortLabel;
+
+  /// No description provided for @taskSortTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get taskSortTitle;
+
+  /// No description provided for @taskSortStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get taskSortStatus;
+
+  /// No description provided for @taskSortPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get taskSortPriority;
+
+  /// No description provided for @taskSortAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Ascending'**
+  String get taskSortAsc;
+
+  /// No description provided for @taskSortDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Descending'**
+  String get taskSortDesc;
+
+  /// No description provided for @taskFiltersReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get taskFiltersReset;
+
+  /// No description provided for @taskNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks match your filters.'**
+  String get taskNoResults;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
