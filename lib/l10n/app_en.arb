@@ -114,5 +114,7 @@
       }
     }
   },
-  "taskAttachmentDeleteConfirmButton": "Delete"
+  "taskAttachmentDeleteConfirmButton": "Delete",
+  "taskAttachmentOpenButton": "Open"
+
 }

@@ -343,4 +343,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get taskAttachmentDeleteConfirmButton => 'Verwijderen';
+
+  @override
+  String get taskAttachmentOpenButton => 'Openen';
 }

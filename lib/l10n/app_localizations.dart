@@ -742,6 +742,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get taskAttachmentDeleteConfirmButton;
+
+  /// No description provided for @taskAttachmentOpenButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get taskAttachmentOpenButton;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

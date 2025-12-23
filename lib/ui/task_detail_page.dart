@@ -10,6 +10,8 @@ import 'package:anchiano_client/utils/task_localization.dart';
 
 import 'package:file_picker/file_picker.dart';
 
+import 'package:open_filex/open_filex.dart';
+
 class TaskDetailPage extends StatefulWidget {
   final int workspaceId;
   final String workspaceRole;
@@ -63,6 +65,30 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return r == 'OWNER' || r == 'MEMBER';
   }
 
+  bool _downloadingAttachment = false;
+
+  Future<void> _downloadAndOpenAttachment(TaskAttachmentItem a) async {
+    final t = AppLocalizations.of(context)!;
+
+    if (_downloadingAttachment) return;
+    setState(() => _downloadingAttachment = true);
+
+    try {
+      final file = await _taskRepository.downloadAttachmentToTemp(
+        widget.workspaceId,
+        _task.id,
+        a,
+      );
+
+      await OpenFilex.open(file.path);
+    } catch (e) {
+      if (!mounted) return;
+      _showError(context, e.toString());
+    } finally {
+      if (mounted) setState(() => _downloadingAttachment = false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -102,7 +128,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
             ? raw.toInt()
             : int.tryParse(raw?.toString() ?? '');
         if (taskId == null) return;
-        if (taskId == _task.id) _reloadTaskFromList();
+        if (taskId == _task.id) {
+          _reloadTaskFromList();
+          _loadAttachments();
+        }
       },
     );
 
@@ -709,13 +738,24 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     subtitle: Text(
                       '${_formatBytes(a.size)} · ${a.uploadedBy ?? '-'}',
                     ),
-                    trailing: canEdit
-                        ? IconButton(
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: t.taskAttachmentOpenButton,
+                          icon: const Icon(Icons.open_in_new),
+                          onPressed: _downloadingAttachment
+                              ? null
+                              : () => _downloadAndOpenAttachment(a),
+                        ),
+                        if (canEdit)
+                          IconButton(
                             tooltip: t.taskAttachmentDeleteConfirmButton,
                             icon: const Icon(Icons.delete),
                             onPressed: () => _confirmAndDeleteAttachment(a),
-                          )
-                        : null,
+                          ),
+                      ],
+                    ),
                   );
                 }).toList(),
               ),

@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-
 import 'api_client.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+
 
 class TaskItem {
   final int id;
@@ -84,8 +86,32 @@ class TaskAuditEntry {
 
 class TaskRepository {
   final ApiClient _apiClient;
-
   TaskRepository(this._apiClient);
+
+  Future<File> downloadAttachmentToTemp(
+    int workspaceId,
+    int taskId,
+    TaskAttachmentItem attachment,
+  ) async {
+    final dir = await getTemporaryDirectory();
+    final safeName = attachment.fileName.replaceAll(
+      RegExp(r'[\\/:"*?<>|]'),
+      '_',
+    );
+    final target = File('${dir.path}/$safeName');
+
+    final url =
+        '/api/workspaces/$workspaceId/tasks/$taskId/attachments/${attachment.id}/download';
+    final dio = _apiClient.dio;
+
+    final response = await dio.get<List<int>>(
+      url,
+      options: Options(responseType: ResponseType.bytes),
+    );
+
+    await target.writeAsBytes(response.data ?? const []);
+    return target;
+  }
 
   Future<List<TaskItem>> getTasks(int workspaceId) async {
     final response = await _apiClient.dio.get(
