@@ -314,4 +314,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get taskNoResults => 'No tasks match your filters.';
+
+  @override
+  String get taskAttachmentsTitle => 'Attachments';
+
+  @override
+  String get taskAttachmentsEmpty => 'No attachments yet.';
+
+  @override
+  String get taskAttachmentUploadButton => 'Upload file';
+
+  @override
+  String get taskAttachmentUploading => 'Uploading...';
+
+  @override
+  String get taskAttachmentUploadSuccess => 'File uploaded.';
+
+  @override
+  String get taskAttachmentPickError => 'Could not read the selected file.';
+
+  @override
+  String get taskAttachmentDeleteTitle => 'Delete attachment';
+
+  @override
+  String taskAttachmentDeleteMessage(String name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get taskAttachmentDeleteConfirmButton => 'Delete';
 }

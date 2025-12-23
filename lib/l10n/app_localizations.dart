@@ -688,6 +688,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No tasks match your filters.'**
   String get taskNoResults;
+
+  /// No description provided for @taskAttachmentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments'**
+  String get taskAttachmentsTitle;
+
+  /// No description provided for @taskAttachmentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No attachments yet.'**
+  String get taskAttachmentsEmpty;
+
+  /// No description provided for @taskAttachmentUploadButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload file'**
+  String get taskAttachmentUploadButton;
+
+  /// No description provided for @taskAttachmentUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading...'**
+  String get taskAttachmentUploading;
+
+  /// No description provided for @taskAttachmentUploadSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'File uploaded.'**
+  String get taskAttachmentUploadSuccess;
+
+  /// No description provided for @taskAttachmentPickError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the selected file.'**
+  String get taskAttachmentPickError;
+
+  /// No description provided for @taskAttachmentDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete attachment'**
+  String get taskAttachmentDeleteTitle;
+
+  /// No description provided for @taskAttachmentDeleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"?'**
+  String taskAttachmentDeleteMessage(String name);
+
+  /// No description provided for @taskAttachmentDeleteConfirmButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get taskAttachmentDeleteConfirmButton;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

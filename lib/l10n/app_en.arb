@@ -98,5 +98,21 @@
   "taskSortAsc": "Ascending",
   "taskSortDesc": "Descending",
   "taskFiltersReset": "Reset",
-  "taskNoResults": "No tasks match your filters."
+  "taskNoResults": "No tasks match your filters.",
+  "taskAttachmentsTitle": "Attachments",
+  "taskAttachmentsEmpty": "No attachments yet.",
+  "taskAttachmentUploadButton": "Upload file",
+  "taskAttachmentUploading": "Uploading...",
+  "taskAttachmentUploadSuccess": "File uploaded.",
+  "taskAttachmentPickError": "Could not read the selected file.",
+  "taskAttachmentDeleteTitle": "Delete attachment",
+  "taskAttachmentDeleteMessage": "Delete \"{name}\"?",
+  "@taskAttachmentDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "taskAttachmentDeleteConfirmButton": "Delete"
 }

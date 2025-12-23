@@ -8,6 +8,8 @@ import 'package:anchiano_client/data/realtime/realtime_service.dart';
 import 'package:anchiano_client/ui/widgets/app_scaffold.dart';
 import 'package:anchiano_client/utils/task_localization.dart';
 
+import 'package:file_picker/file_picker.dart';
+
 class TaskDetailPage extends StatefulWidget {
   final int workspaceId;
   final String workspaceRole;
@@ -44,6 +46,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   List<TaskAuditEntry> _auditEntries = [];
   bool _loadingAudit = true;
 
+  List<TaskAttachmentItem> _attachments = [];
+  bool _loadingAttachments = true;
+  bool _uploadingAttachment = false;
+
   void Function()? _unsubAudit;
   void Function()? _unsubTasks;
 
@@ -66,18 +72,23 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     _task = widget.task;
     _titleController = TextEditingController(text: _task.title);
-    _descriptionController = TextEditingController(text: _task.description ?? '');
+    _descriptionController = TextEditingController(
+      text: _task.description ?? '',
+    );
     _selectedAssigneeId = _task.assigneeId;
     _dueDate = _task.dueDate;
 
     _loadMembers();
     _loadAuditLog();
+    _loadAttachments();
 
     _unsubAudit = widget.realtimeService.subscribeAudit(
       widget.workspaceId,
       onEvent: (payload) {
         final raw = payload['taskId'];
-        final taskId = raw is num ? raw.toInt() : int.tryParse(raw?.toString() ?? '');
+        final taskId = raw is num
+            ? raw.toInt()
+            : int.tryParse(raw?.toString() ?? '');
         if (taskId == null) return;
         if (taskId == _task.id) _loadAuditLog();
       },
@@ -87,7 +98,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       widget.workspaceId,
       onEvent: (payload) {
         final raw = payload['taskId'];
-        final taskId = raw is num ? raw.toInt() : int.tryParse(raw?.toString() ?? '');
+        final taskId = raw is num
+            ? raw.toInt()
+            : int.tryParse(raw?.toString() ?? '');
         if (taskId == null) return;
         if (taskId == _task.id) _reloadTaskFromList();
       },
@@ -135,7 +148,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   Future<void> _reloadTaskFromList() async {
     try {
       final list = await _taskRepository.getTasks(widget.workspaceId);
-      final updated = list.firstWhere((t) => t.id == _task.id, orElse: () => _task);
+      final updated = list.firstWhere(
+        (t) => t.id == _task.id,
+        orElse: () => _task,
+      );
       if (!mounted) return;
       setState(() {
         _task = updated;
@@ -162,7 +178,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   Future<void> _loadAuditLog() async {
     setState(() => _loadingAudit = true);
     try {
-      final entries = await _taskRepository.getAuditLog(widget.workspaceId, _task.id);
+      final entries = await _taskRepository.getAuditLog(
+        widget.workspaceId,
+        _task.id,
+      );
       if (!mounted) return;
       setState(() {
         _auditEntries = entries;
@@ -177,7 +196,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
   Future<void> _onChangeStatus(BuildContext context, String newStatus) async {
     try {
-      final updated = await _taskRepository.updateStatus(widget.workspaceId, _task.id, newStatus);
+      final updated = await _taskRepository.updateStatus(
+        widget.workspaceId,
+        _task.id,
+        newStatus,
+      );
       if (!mounted) return;
       setState(() {
         _task = updated;
@@ -189,9 +212,16 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
   }
 
-  Future<void> _onChangePriority(BuildContext context, String newPriority) async {
+  Future<void> _onChangePriority(
+    BuildContext context,
+    String newPriority,
+  ) async {
     try {
-      final updated = await _taskRepository.updatePriority(widget.workspaceId, _task.id, newPriority);
+      final updated = await _taskRepository.updatePriority(
+        widget.workspaceId,
+        _task.id,
+        newPriority,
+      );
       if (!mounted) return;
       setState(() {
         _task = updated;
@@ -228,7 +258,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
 
     if (pickedTime == null) {
-      setState(() => _dueDate = DateTime(pickedDate.year, pickedDate.month, pickedDate.day));
+      setState(
+        () => _dueDate = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+        ),
+      );
       return;
     }
 
@@ -271,9 +307,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         _syncFromTask();
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.taskSaveButton)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(t.taskSaveButton)));
 
       await _loadAuditLog();
     } catch (e) {
@@ -378,7 +414,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     String initials(String s) {
       final parts = s.trim().split(RegExp(r'\s+'));
       if (parts.isEmpty) return '?';
-      if (parts.length == 1) return parts.first.isNotEmpty ? parts.first[0].toUpperCase() : '?';
+      if (parts.length == 1)
+        return parts.first.isNotEmpty ? parts.first[0].toUpperCase() : '?';
       final a = parts[0].isNotEmpty ? parts[0][0] : '';
       final b = parts[1].isNotEmpty ? parts[1][0] : '';
       final res = '$a$b'.trim();
@@ -421,6 +458,108 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
   }
 
+  Future<void> _loadAttachments() async {
+    setState(() => _loadingAttachments = true);
+    try {
+      final list = await _taskRepository.getAttachments(
+        widget.workspaceId,
+        _task.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _attachments = list;
+        _loadingAttachments = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingAttachments = false);
+      _showError(context, e.toString());
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '${bytes} B';
+    final kb = bytes / 1024.0;
+    if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
+    final mb = kb / 1024.0;
+    return '${mb.toStringAsFixed(1)} MB';
+  }
+
+  Future<void> _pickAndUploadAttachment() async {
+    final t = AppLocalizations.of(context)!;
+    if (!canEdit || _uploadingAttachment) return;
+
+    final result = await FilePicker.platform.pickFiles(withData: false);
+    if (result == null || result.files.isEmpty) return;
+
+    final f = result.files.first;
+    final path = f.path;
+    if (path == null) {
+      _showError(context, t.taskAttachmentPickError);
+      return;
+    }
+
+    setState(() => _uploadingAttachment = true);
+    try {
+      await _taskRepository.uploadAttachment(
+        widget.workspaceId,
+        _task.id,
+        filePath: path,
+        fileName: f.name,
+      );
+
+      if (!mounted) return;
+      await _loadAttachments();
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(t.taskAttachmentUploadSuccess)));
+    } catch (e) {
+      if (!mounted) return;
+      _showError(context, e.toString());
+    } finally {
+      if (mounted) setState(() => _uploadingAttachment = false);
+    }
+  }
+
+  Future<void> _confirmAndDeleteAttachment(TaskAttachmentItem a) async {
+    final t = AppLocalizations.of(context)!;
+    if (!canEdit) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(t.taskAttachmentDeleteTitle),
+        content: Text(t.taskAttachmentDeleteMessage(a.fileName)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(t.cancelButton),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(t.taskAttachmentDeleteConfirmButton),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    try {
+      await _taskRepository.deleteAttachment(
+        widget.workspaceId,
+        _task.id,
+        a.id,
+      );
+      if (!mounted) return;
+      await _loadAttachments();
+    } catch (e) {
+      if (!mounted) return;
+      _showError(context, e.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -431,109 +570,195 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       onChangeLanguage: widget.onChangeLanguage,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _buildPresence(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildPresence(),
 
-          _buildTextField(t.taskFieldTitleLabel, _titleController, canEdit),
-          const SizedBox(height: 16),
-          _buildTextField(
-            t.taskFieldDescriptionLabel,
-            _descriptionController,
-            canEdit,
-            maxLines: 4,
-          ),
-          const SizedBox(height: 16),
-
-          Text(t.taskFieldAssigneeLabel, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          _loadingMembers
-              ? const LinearProgressIndicator()
-              : DropdownButtonFormField<int>(
-                  value: _selectedAssigneeId,
-                  items: [
-                    const DropdownMenuItem<int>(value: null, child: Text('-')),
-                    ..._members.map(
-                      (m) => DropdownMenuItem<int>(
-                        value: m.userId,
-                        child: Text(m.displayName),
-                      ),
-                    ),
-                  ],
-                  onChanged: canEdit ? (v) => setState(() => _selectedAssigneeId = v) : null,
-                ),
-
-          const SizedBox(height: 16),
-
-          Text(t.taskFieldDueDateLabel, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          Row(children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(_formatDateTime(_dueDate)),
-              ),
+            _buildTextField(t.taskFieldTitleLabel, _titleController, canEdit),
+            const SizedBox(height: 16),
+            _buildTextField(
+              t.taskFieldDescriptionLabel,
+              _descriptionController,
+              canEdit,
+              maxLines: 4,
             ),
-            if (canEdit)
-              IconButton(
-                icon: const Icon(Icons.calendar_today),
-                onPressed: () => _pickDueDateTime(context),
-              ),
-          ]),
+            const SizedBox(height: 16),
 
-          const SizedBox(height: 24),
+            Text(
+              t.taskFieldAssigneeLabel,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 4),
+            _loadingMembers
+                ? const LinearProgressIndicator()
+                : DropdownButtonFormField<int>(
+                    value: _selectedAssigneeId,
+                    items: [
+                      const DropdownMenuItem<int>(
+                        value: null,
+                        child: Text('-'),
+                      ),
+                      ..._members.map(
+                        (m) => DropdownMenuItem<int>(
+                          value: m.userId,
+                          child: Text(m.displayName),
+                        ),
+                      ),
+                    ],
+                    onChanged: canEdit
+                        ? (v) => setState(() => _selectedAssigneeId = v)
+                        : null,
+                  ),
 
-          _buildStatusDropdown(t),
-          const SizedBox(height: 16),
-          _buildPriorityDropdown(t),
+            const SizedBox(height: 16),
 
-          const SizedBox(height: 24),
-
-          if (canEdit)
+            Text(
+              t.taskFieldDueDateLabel,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 4),
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: _deleting ? null : () => _onSaveFields(context),
-                    child: Text(t.taskSaveButton),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(_formatDateTime(_dueDate)),
                   ),
                 ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _deleting ? null : () => _onDeleteTask(context),
-                  child: Text(t.taskDeleteButton),
-                ),
+                if (canEdit)
+                  IconButton(
+                    icon: const Icon(Icons.calendar_today),
+                    onPressed: () => _pickDueDateTime(context),
+                  ),
               ],
             ),
 
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          Text(t.taskAuditLogTitle, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          if (_loadingAudit)
-            const LinearProgressIndicator()
-          else if (_auditEntries.isEmpty)
-            Text(t.taskAuditLogEmpty)
-          else
-            Column(
-              children: _auditEntries.map((e) {
-                final ts = _formatDateTime(e.timestamp);
-                final field = _localizedAuditField(t, e.fieldName);
-                final oldVal = _localizedAuditValue(t, e.fieldName, e.oldValue);
-                final newVal = _localizedAuditValue(t, e.fieldName, e.newValue);
+            _buildStatusDropdown(t),
+            const SizedBox(height: 16),
+            _buildPriorityDropdown(t),
 
-                return ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('$ts · $field: $oldVal → $newVal'),
-                  subtitle: e.actor != null && e.actor!.isNotEmpty ? Text(t.taskAuditBy(e.actor!)) : null,
-                );
-              }).toList(),
+            const SizedBox(height: 24),
+
+            if (canEdit)
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _deleting
+                          ? null
+                          : () => _onSaveFields(context),
+                      child: Text(t.taskSaveButton),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: _deleting ? null : () => _onDeleteTask(context),
+                    child: Text(t.taskDeleteButton),
+                  ),
+                ],
+              ),
+
+            const SizedBox(height: 24),
+
+            Text(
+              t.taskAttachmentsTitle,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-        ]),
+            const SizedBox(height: 8),
+
+            Row(
+              children: [
+                if (canEdit)
+                  ElevatedButton.icon(
+                    onPressed: _uploadingAttachment
+                        ? null
+                        : _pickAndUploadAttachment,
+                    icon: const Icon(Icons.attach_file),
+                    label: Text(
+                      _uploadingAttachment
+                          ? t.taskAttachmentUploading
+                          : t.taskAttachmentUploadButton,
+                    ),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            if (_loadingAttachments)
+              const LinearProgressIndicator()
+            else if (_attachments.isEmpty)
+              Text(t.taskAttachmentsEmpty)
+            else
+              Column(
+                children: _attachments.map((a) {
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.insert_drive_file),
+                    title: Text(a.fileName),
+                    subtitle: Text(
+                      '${_formatBytes(a.size)} · ${a.uploadedBy ?? '-'}',
+                    ),
+                    trailing: canEdit
+                        ? IconButton(
+                            tooltip: t.taskAttachmentDeleteConfirmButton,
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => _confirmAndDeleteAttachment(a),
+                          )
+                        : null,
+                  );
+                }).toList(),
+              ),
+
+            const SizedBox(height: 24),
+
+            Text(
+              t.taskAuditLogTitle,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            if (_loadingAudit)
+              const LinearProgressIndicator()
+            else if (_auditEntries.isEmpty)
+              Text(t.taskAuditLogEmpty)
+            else
+              Column(
+                children: _auditEntries.map((e) {
+                  final ts = _formatDateTime(e.timestamp);
+                  final field = _localizedAuditField(t, e.fieldName);
+                  final oldVal = _localizedAuditValue(
+                    t,
+                    e.fieldName,
+                    e.oldValue,
+                  );
+                  final newVal = _localizedAuditValue(
+                    t,
+                    e.fieldName,
+                    e.newValue,
+                  );
+
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('$ts · $field: $oldVal → $newVal'),
+                    subtitle: e.actor != null && e.actor!.isNotEmpty
+                        ? Text(t.taskAuditBy(e.actor!))
+                        : null,
+                  );
+                }).toList(),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -563,16 +788,26 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(t.taskFieldStatusLabel, style: Theme.of(context).textTheme.labelLarge),
+        Text(
+          t.taskFieldStatusLabel,
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
         const SizedBox(height: 4),
         DropdownButtonFormField<String>(
           value: _task.status,
           items: [
             DropdownMenuItem(value: 'OPEN', child: Text(t.taskStatusOpen)),
-            DropdownMenuItem(value: 'IN_PROGRESS', child: Text(t.taskStatusInProgress)),
+            DropdownMenuItem(
+              value: 'IN_PROGRESS',
+              child: Text(t.taskStatusInProgress),
+            ),
             DropdownMenuItem(value: 'DONE', child: Text(t.taskStatusDone)),
           ],
-          onChanged: canEdit ? (value) { if (value != null) _onChangeStatus(context, value); } : null,
+          onChanged: canEdit
+              ? (value) {
+                  if (value != null) _onChangeStatus(context, value);
+                }
+              : null,
         ),
       ],
     );
@@ -582,16 +817,26 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(t.taskFieldPriorityLabel, style: Theme.of(context).textTheme.labelLarge),
+        Text(
+          t.taskFieldPriorityLabel,
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
         const SizedBox(height: 4),
         DropdownButtonFormField<String>(
           value: _task.priority,
           items: [
             DropdownMenuItem(value: 'LOW', child: Text(t.taskPriorityLow)),
-            DropdownMenuItem(value: 'MEDIUM', child: Text(t.taskPriorityMedium)),
+            DropdownMenuItem(
+              value: 'MEDIUM',
+              child: Text(t.taskPriorityMedium),
+            ),
             DropdownMenuItem(value: 'HIGH', child: Text(t.taskPriorityHigh)),
           ],
-          onChanged: canEdit ? (value) { if (value != null) _onChangePriority(context, value); } : null,
+          onChanged: canEdit
+              ? (value) {
+                  if (value != null) _onChangePriority(context, value);
+                }
+              : null,
         ),
       ],
     );

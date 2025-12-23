@@ -36,9 +36,15 @@ class TaskItem {
       status: json['status'] as String? ?? 'OPEN',
       priority: json['priority'] as String? ?? 'MEDIUM',
       assigneeId: json['assigneeId'] as int?,
-      dueDate: json['dueDate'] != null ? DateTime.parse(json['dueDate'] as String) : null,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : null,
+      dueDate: json['dueDate'] != null
+          ? DateTime.parse(json['dueDate'] as String)
+          : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
       completed: json['completed'] as bool? ?? false,
     );
   }
@@ -82,9 +88,13 @@ class TaskRepository {
   TaskRepository(this._apiClient);
 
   Future<List<TaskItem>> getTasks(int workspaceId) async {
-    final response = await _apiClient.dio.get('/api/workspaces/$workspaceId/tasks');
+    final response = await _apiClient.dio.get(
+      '/api/workspaces/$workspaceId/tasks',
+    );
     final list = response.data as List<dynamic>;
-    return list.map((e) => TaskItem.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => TaskItem.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<TaskItem> createTask(int workspaceId, String title) async {
@@ -95,7 +105,11 @@ class TaskRepository {
     return TaskItem.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<TaskItem> updateStatus(int workspaceId, int taskId, String status) async {
+  Future<TaskItem> updateStatus(
+    int workspaceId,
+    int taskId,
+    String status,
+  ) async {
     try {
       final response = await _apiClient.dio.patch(
         '/api/workspaces/$workspaceId/tasks/$taskId/status',
@@ -109,7 +123,11 @@ class TaskRepository {
     }
   }
 
-  Future<TaskItem> updatePriority(int workspaceId, int taskId, String priority) async {
+  Future<TaskItem> updatePriority(
+    int workspaceId,
+    int taskId,
+    String priority,
+  ) async {
     try {
       final response = await _apiClient.dio.patch(
         '/api/workspaces/$workspaceId/tasks/$taskId/priority',
@@ -146,12 +164,89 @@ class TaskRepository {
   }
 
   Future<List<TaskAuditEntry>> getAuditLog(int workspaceId, int taskId) async {
-    final response = await _apiClient.dio.get('/api/workspaces/$workspaceId/tasks/$taskId/audit-log');
+    final response = await _apiClient.dio.get(
+      '/api/workspaces/$workspaceId/tasks/$taskId/audit-log',
+    );
     final list = response.data as List<dynamic>;
-    return list.map((e) => TaskAuditEntry.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => TaskAuditEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<void> deleteTask(int workspaceId, int taskId) async {
     await _apiClient.dio.delete('/api/workspaces/$workspaceId/tasks/$taskId');
+  }
+}
+
+class TaskAttachmentItem {
+  final int id;
+  final String fileName;
+  final String contentType;
+  final int size;
+  final DateTime createdAt;
+  final String? uploadedBy;
+
+  TaskAttachmentItem({
+    required this.id,
+    required this.fileName,
+    required this.contentType,
+    required this.size,
+    required this.createdAt,
+    this.uploadedBy,
+  });
+
+  factory TaskAttachmentItem.fromJson(Map<String, dynamic> json) {
+    return TaskAttachmentItem(
+      id: json['id'] as int,
+      fileName: json['fileName'] as String? ?? '',
+      contentType: json['contentType'] as String? ?? 'application/octet-stream',
+      size: (json['size'] as num?)?.toInt() ?? 0,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      uploadedBy: json['uploadedBy'] as String?,
+    );
+  }
+}
+
+extension TaskAttachmentsApi on TaskRepository {
+  Future<List<TaskAttachmentItem>> getAttachments(
+    int workspaceId,
+    int taskId,
+  ) async {
+    final res = await _apiClient.dio.get(
+      '/api/workspaces/$workspaceId/tasks/$taskId/attachments',
+    );
+    final list = res.data as List<dynamic>;
+    return list
+        .map((e) => TaskAttachmentItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<TaskAttachmentItem> uploadAttachment(
+    int workspaceId,
+    int taskId, {
+    required String filePath,
+    required String fileName,
+  }) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+
+    final res = await _apiClient.dio.post(
+      '/api/workspaces/$workspaceId/tasks/$taskId/attachments',
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+
+    return TaskAttachmentItem.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteAttachment(
+    int workspaceId,
+    int taskId,
+    int attachmentId,
+  ) async {
+    await _apiClient.dio.delete(
+      '/api/workspaces/$workspaceId/tasks/$taskId/attachments/$attachmentId',
+    );
   }
 }

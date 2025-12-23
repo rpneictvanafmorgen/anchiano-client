@@ -98,5 +98,21 @@
   "taskSortAsc": "Oplopend",
   "taskSortDesc": "Aflopend",
   "taskFiltersReset": "Reset",
-  "taskNoResults": "Geen taken gevonden met deze filters."
+  "taskNoResults": "Geen taken gevonden met deze filters.",
+  "taskAttachmentsTitle": "Bijlagen",
+  "taskAttachmentsEmpty": "Nog geen bijlagen.",
+  "taskAttachmentUploadButton": "Bestand uploaden",
+  "taskAttachmentUploading": "Uploaden...",
+  "taskAttachmentUploadSuccess": "Bestand geüpload.",
+  "taskAttachmentPickError": "Kon het geselecteerde bestand niet lezen.",
+  "taskAttachmentDeleteTitle": "Bijlage verwijderen",
+  "taskAttachmentDeleteMessage": "\"{name}\" verwijderen?",
+  "@taskAttachmentDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "taskAttachmentDeleteConfirmButton": "Verwijderen"
 }

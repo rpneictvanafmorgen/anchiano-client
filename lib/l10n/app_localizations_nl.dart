@@ -314,4 +314,33 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get taskNoResults => 'Geen taken gevonden met deze filters.';
+
+  @override
+  String get taskAttachmentsTitle => 'Bijlagen';
+
+  @override
+  String get taskAttachmentsEmpty => 'Nog geen bijlagen.';
+
+  @override
+  String get taskAttachmentUploadButton => 'Bestand uploaden';
+
+  @override
+  String get taskAttachmentUploading => 'Uploaden...';
+
+  @override
+  String get taskAttachmentUploadSuccess => 'Bestand geüpload.';
+
+  @override
+  String get taskAttachmentPickError => 'Kon het geselecteerde bestand niet lezen.';
+
+  @override
+  String get taskAttachmentDeleteTitle => 'Bijlage verwijderen';
+
+  @override
+  String taskAttachmentDeleteMessage(String name) {
+    return '\"$name\" verwijderen?';
+  }
+
+  @override
+  String get taskAttachmentDeleteConfirmButton => 'Verwijderen';
 }
