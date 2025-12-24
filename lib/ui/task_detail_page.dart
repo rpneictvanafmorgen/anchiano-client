@@ -177,11 +177,16 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   Future<void> _reloadTaskFromList() async {
     try {
       final list = await _taskRepository.getTasks(widget.workspaceId);
-      final updated = list.firstWhere(
-        (t) => t.id == _task.id,
-        orElse: () => _task,
-      );
+      final exists = list.any((t) => t.id == _task.id);
+
       if (!mounted) return;
+
+      if (!exists) {
+        Navigator.pop(context, true);
+        return;
+      }
+
+      final updated = list.firstWhere((t) => t.id == _task.id);
       setState(() {
         _task = updated;
         _syncFromTask();
@@ -414,6 +419,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         return t.taskFieldAssigneeLabel;
       case 'dueDate':
         return t.taskFieldDueDateLabel;
+      case 'attachment':
+        return t.taskAttachmentsTitle;
       default:
         return fieldName;
     }
