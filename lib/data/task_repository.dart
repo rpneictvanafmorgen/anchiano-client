@@ -4,7 +4,6 @@ import 'api_client.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
-
 class TaskItem {
   final int id;
   final String title;
@@ -202,6 +201,34 @@ class TaskRepository {
   Future<void> deleteTask(int workspaceId, int taskId) async {
     await _apiClient.dio.delete('/api/workspaces/$workspaceId/tasks/$taskId');
   }
+
+  Future<List<TaskCommentItem>> getComments(int workspaceId, int taskId) async {
+    final response = await _apiClient.dio.get(
+      '/api/workspaces/$workspaceId/tasks/$taskId/comments',
+    );
+    final list = response.data as List<dynamic>;
+    return list
+        .map((e) => TaskCommentItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<TaskCommentItem> addComment(
+    int workspaceId,
+    int taskId, {
+    required String body,
+  }) async {
+    final response = await _apiClient.dio.post(
+      '/api/workspaces/$workspaceId/tasks/$taskId/comments',
+      data: {'body': body},
+    );
+    return TaskCommentItem.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteComment(int workspaceId, int taskId, int commentId) async {
+    await _apiClient.dio.delete(
+      '/api/workspaces/$workspaceId/tasks/$taskId/comments/$commentId',
+    );
+  }
 }
 
 class TaskAttachmentItem {
@@ -273,6 +300,34 @@ extension TaskAttachmentsApi on TaskRepository {
   ) async {
     await _apiClient.dio.delete(
       '/api/workspaces/$workspaceId/tasks/$taskId/attachments/$attachmentId',
+    );
+  }
+}
+
+class TaskCommentItem {
+  final int id;
+  final String body;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  final String? authorEmail;
+
+  TaskCommentItem({
+    required this.id,
+    required this.body,
+    required this.createdAt,
+    this.updatedAt,
+    this.authorEmail,
+  });
+
+  factory TaskCommentItem.fromJson(Map<String, dynamic> json) {
+    return TaskCommentItem(
+      id: (json['id'] as num).toInt(),
+      body: (json['body'] ?? '').toString(),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
+      authorEmail: json['authorEmail'] as String?,
     );
   }
 }

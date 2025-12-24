@@ -188,4 +188,23 @@ class RealtimeService {
       },
     );
   }
+
+  void Function() subscribeComments(
+    int workspaceId, {
+    required void Function(Map<String, dynamic> event) onEvent,
+  }) {
+    final client = _client;
+    if (client == null) return () {};
+
+    return client.subscribe(
+      destination: '/topic/workspaces/$workspaceId/comments',
+      callback: (StompFrame frame) {
+        final body = frame.body;
+        if (body == null || body.isEmpty) return;
+        try {
+          onEvent(jsonDecode(body) as Map<String, dynamic>);
+        } catch (_) {}
+      },
+    );
+  }
 }

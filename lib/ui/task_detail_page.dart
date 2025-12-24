@@ -9,7 +9,6 @@ import 'package:anchiano_client/ui/widgets/app_scaffold.dart';
 import 'package:anchiano_client/utils/task_localization.dart';
 
 import 'package:file_picker/file_picker.dart';
-
 import 'package:open_filex/open_filex.dart';
 
 class TaskDetailPage extends StatefulWidget {
@@ -52,8 +51,15 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   bool _loadingAttachments = true;
   bool _uploadingAttachment = false;
 
+  // COMMENTS
+  List<TaskCommentItem> _comments = [];
+  bool _loadingComments = true;
+  bool _postingComment = false;
+  late TextEditingController _commentController;
+
   void Function()? _unsubAudit;
   void Function()? _unsubTasks;
+  void Function()? _unsubComments;
 
   void Function()? _unsubPresence;
   List<Map<String, dynamic>> _presenceViewers = [];
@@ -68,8 +74,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   bool _downloadingAttachment = false;
 
   Future<void> _downloadAndOpenAttachment(TaskAttachmentItem a) async {
-    final t = AppLocalizations.of(context)!;
-
     if (_downloadingAttachment) return;
     setState(() => _downloadingAttachment = true);
 
@@ -79,7 +83,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         _task.id,
         a,
       );
-
       await OpenFilex.open(file.path);
     } catch (e) {
       if (!mounted) return;
@@ -98,23 +101,22 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     _task = widget.task;
     _titleController = TextEditingController(text: _task.title);
-    _descriptionController = TextEditingController(
-      text: _task.description ?? '',
-    );
+    _descriptionController = TextEditingController(text: _task.description ?? '');
     _selectedAssigneeId = _task.assigneeId;
     _dueDate = _task.dueDate;
+
+    _commentController = TextEditingController();
 
     _loadMembers();
     _loadAuditLog();
     _loadAttachments();
+    _loadComments();
 
     _unsubAudit = widget.realtimeService.subscribeAudit(
       widget.workspaceId,
       onEvent: (payload) {
         final raw = payload['taskId'];
-        final taskId = raw is num
-            ? raw.toInt()
-            : int.tryParse(raw?.toString() ?? '');
+        final taskId = raw is num ? raw.toInt() : int.tryParse(raw?.toString() ?? '');
         if (taskId == null) return;
         if (taskId == _task.id) _loadAuditLog();
       },
@@ -124,13 +126,26 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       widget.workspaceId,
       onEvent: (payload) {
         final raw = payload['taskId'];
-        final taskId = raw is num
-            ? raw.toInt()
-            : int.tryParse(raw?.toString() ?? '');
+        final taskId = raw is num ? raw.toInt() : int.tryParse(raw?.toString() ?? '');
         if (taskId == null) return;
         if (taskId == _task.id) {
           _reloadTaskFromList();
           _loadAttachments();
+        }
+      },
+    );
+
+    // COMMENTS realtime
+    _unsubComments = widget.realtimeService.subscribeComments(
+      widget.workspaceId,
+      onEvent: (payload) {
+        final raw = payload['taskId'];
+        final taskId = raw is num ? raw.toInt() : int.tryParse(raw?.toString() ?? '');
+        if (taskId == null) return;
+        if (taskId == _task.id) {
+          _loadComments();
+          // jouw backend logt comment ook naar audit, dus audit kan mee:
+          _loadAuditLog();
         }
       },
     );
@@ -168,9 +183,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     _unsubAudit?.call();
     _unsubTasks?.call();
+    _unsubComments?.call();
 
     _titleController.dispose();
     _descriptionController.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -212,10 +229,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   Future<void> _loadAuditLog() async {
     setState(() => _loadingAudit = true);
     try {
-      final entries = await _taskRepository.getAuditLog(
-        widget.workspaceId,
-        _task.id,
-      );
+      final entries = await _taskRepository.getAuditLog(widget.workspaceId, _task.id);
       if (!mounted) return;
       setState(() {
         _auditEntries = entries;
@@ -230,11 +244,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
   Future<void> _onChangeStatus(BuildContext context, String newStatus) async {
     try {
-      final updated = await _taskRepository.updateStatus(
-        widget.workspaceId,
-        _task.id,
-        newStatus,
-      );
+      final updated = await _taskRepository.updateStatus(widget.workspaceId, _task.id, newStatus);
       if (!mounted) return;
       setState(() {
         _task = updated;
@@ -246,16 +256,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
   }
 
-  Future<void> _onChangePriority(
-    BuildContext context,
-    String newPriority,
-  ) async {
+  Future<void> _onChangePriority(BuildContext context, String newPriority) async {
     try {
-      final updated = await _taskRepository.updatePriority(
-        widget.workspaceId,
-        _task.id,
-        newPriority,
-      );
+      final updated =
+          await _taskRepository.updatePriority(widget.workspaceId, _task.id, newPriority);
       if (!mounted) return;
       setState(() {
         _task = updated;
@@ -292,13 +296,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
 
     if (pickedTime == null) {
-      setState(
-        () => _dueDate = DateTime(
-          pickedDate.year,
-          pickedDate.month,
-          pickedDate.day,
-        ),
-      );
+      setState(() => _dueDate = DateTime(pickedDate.year, pickedDate.month, pickedDate.day));
       return;
     }
 
@@ -341,10 +339,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         _syncFromTask();
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(t.taskSaveButton)));
-
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.taskSaveButton)));
       await _loadAuditLog();
     } catch (e) {
       _showError(context, e.toString());
@@ -361,10 +356,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         title: Text(t.taskDeleteTitle),
         content: Text(t.taskDeleteMessage(_task.title)),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(t.cancelButton),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t.cancelButton)),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(t.taskDeleteConfirmButton),
@@ -381,11 +373,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
       if (!mounted) return;
 
-      widget.realtimeService.sendPresenceLeave(
-        workspaceId: widget.workspaceId,
-        taskId: _task.id,
-      );
-
+      widget.realtimeService.sendPresenceLeave(workspaceId: widget.workspaceId, taskId: _task.id);
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -421,6 +409,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         return t.taskFieldDueDateLabel;
       case 'attachment':
         return t.taskAttachmentsTitle;
+      case 'comment':
+        // voeg eventueel later een echte vertaling toe in l10n
+        return 'Comments';
       default:
         return fieldName;
     }
@@ -450,8 +441,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     String initials(String s) {
       final parts = s.trim().split(RegExp(r'\s+'));
       if (parts.isEmpty) return '?';
-      if (parts.length == 1)
+      if (parts.length == 1) {
         return parts.first.isNotEmpty ? parts.first[0].toUpperCase() : '?';
+      }
       final a = parts[0].isNotEmpty ? parts[0][0] : '';
       final b = parts[1].isNotEmpty ? parts[1][0] : '';
       final res = '$a$b'.trim();
@@ -477,10 +469,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     final n = nameOf(v);
                     return CircleAvatar(
                       radius: 14,
-                      child: Text(
-                        initials(n),
-                        style: const TextStyle(fontSize: 12),
-                      ),
+                      child: Text(initials(n), style: const TextStyle(fontSize: 12)),
                     );
                   }).toList(),
                 ),
@@ -497,10 +486,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   Future<void> _loadAttachments() async {
     setState(() => _loadingAttachments = true);
     try {
-      final list = await _taskRepository.getAttachments(
-        widget.workspaceId,
-        _task.id,
-      );
+      final list = await _taskRepository.getAttachments(widget.workspaceId, _task.id);
       if (!mounted) return;
       setState(() {
         _attachments = list;
@@ -514,7 +500,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   }
 
   String _formatBytes(int bytes) {
-    if (bytes < 1024) return '${bytes} B';
+    if (bytes < 1024) return '$bytes B';
     final kb = bytes / 1024.0;
     if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
     final mb = kb / 1024.0;
@@ -547,9 +533,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       if (!mounted) return;
       await _loadAttachments();
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(t.taskAttachmentUploadSuccess)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(t.taskAttachmentUploadSuccess)));
     } catch (e) {
       if (!mounted) return;
       _showError(context, e.toString());
@@ -568,10 +553,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         title: Text(t.taskAttachmentDeleteTitle),
         content: Text(t.taskAttachmentDeleteMessage(a.fileName)),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(t.cancelButton),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t.cancelButton)),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(t.taskAttachmentDeleteConfirmButton),
@@ -583,13 +565,78 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     if (ok != true) return;
 
     try {
-      await _taskRepository.deleteAttachment(
-        widget.workspaceId,
-        _task.id,
-        a.id,
-      );
+      await _taskRepository.deleteAttachment(widget.workspaceId, _task.id, a.id);
       if (!mounted) return;
       await _loadAttachments();
+    } catch (e) {
+      if (!mounted) return;
+      _showError(context, e.toString());
+    }
+  }
+
+  // COMMENTS
+  Future<void> _loadComments() async {
+    setState(() => _loadingComments = true);
+    try {
+      final list = await _taskRepository.getComments(widget.workspaceId, _task.id);
+      if (!mounted) return;
+      setState(() {
+        _comments = list;
+        _loadingComments = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingComments = false);
+      _showError(context, e.toString());
+    }
+  }
+
+  Future<void> _postComment() async {
+    if (_postingComment) return;
+    final body = _commentController.text.trim();
+    if (body.isEmpty) return;
+
+    setState(() => _postingComment = true);
+    try {
+      await _taskRepository.addComment(widget.workspaceId, _task.id, body: body);
+      if (!mounted) return;
+      _commentController.clear();
+      await _loadComments();
+      await _loadAuditLog();
+    } catch (e) {
+      if (!mounted) return;
+      _showError(context, e.toString());
+    } finally {
+      if (mounted) setState(() => _postingComment = false);
+    }
+  }
+
+  Future<void> _confirmAndDeleteComment(TaskCommentItem c) async {
+    if (!canEdit) return;
+    final t = AppLocalizations.of(context)!;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete comment'),
+        content: Text('Delete this comment?\n\n"${c.body}"'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t.cancelButton)),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    try {
+      await _taskRepository.deleteComment(widget.workspaceId, _task.id, c.id);
+      if (!mounted) return;
+      await _loadComments();
+      await _loadAuditLog();
     } catch (e) {
       if (!mounted) return;
       _showError(context, e.toString());
@@ -621,20 +668,14 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
             ),
             const SizedBox(height: 16),
 
-            Text(
-              t.taskFieldAssigneeLabel,
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
+            Text(t.taskFieldAssigneeLabel, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 4),
             _loadingMembers
                 ? const LinearProgressIndicator()
                 : DropdownButtonFormField<int>(
                     value: _selectedAssigneeId,
                     items: [
-                      const DropdownMenuItem<int>(
-                        value: null,
-                        child: Text('-'),
-                      ),
+                      const DropdownMenuItem<int>(value: null, child: Text('-')),
                       ..._members.map(
                         (m) => DropdownMenuItem<int>(
                           value: m.userId,
@@ -642,26 +683,18 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                         ),
                       ),
                     ],
-                    onChanged: canEdit
-                        ? (v) => setState(() => _selectedAssigneeId = v)
-                        : null,
+                    onChanged: canEdit ? (v) => setState(() => _selectedAssigneeId = v) : null,
                   ),
 
             const SizedBox(height: 16),
 
-            Text(
-              t.taskFieldDueDateLabel,
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
+            Text(t.taskFieldDueDateLabel, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 4),
             Row(
               children: [
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 12,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey),
                       borderRadius: BorderRadius.circular(4),
@@ -690,9 +723,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _deleting
-                          ? null
-                          : () => _onSaveFields(context),
+                      onPressed: _deleting ? null : () => _onSaveFields(context),
                       child: Text(t.taskSaveButton),
                     ),
                   ),
@@ -706,24 +737,78 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
             const SizedBox(height: 24),
 
-            Text(
-              t.taskAttachmentsTitle,
-              style: Theme.of(context).textTheme.titleMedium,
+            // COMMENTS SECTION
+            Text('Comments', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    minLines: 1,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Write a comment…',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _postingComment ? null : _postComment,
+                  child: _postingComment
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send),
+                ),
+              ],
             ),
+
+            const SizedBox(height: 8),
+
+            if (_loadingComments)
+              const LinearProgressIndicator()
+            else if (_comments.isEmpty)
+              const Text('No comments yet.')
+            else
+              Column(
+                children: _comments.map((c) {
+                  final when = _formatDateTime(c.createdAt);
+                  final who = (c.authorEmail ?? '-');
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.comment),
+                    title: Text(c.body),
+                    subtitle: Text('$when · $who'),
+                    trailing: canEdit
+                        ? IconButton(
+                            tooltip: 'Delete',
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => _confirmAndDeleteComment(c),
+                          )
+                        : null,
+                  );
+                }).toList(),
+              ),
+
+            const SizedBox(height: 24),
+
+            // ATTACHMENTS SECTION
+            Text(t.taskAttachmentsTitle, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
 
             Row(
               children: [
                 if (canEdit)
                   ElevatedButton.icon(
-                    onPressed: _uploadingAttachment
-                        ? null
-                        : _pickAndUploadAttachment,
+                    onPressed: _uploadingAttachment ? null : _pickAndUploadAttachment,
                     icon: const Icon(Icons.attach_file),
                     label: Text(
-                      _uploadingAttachment
-                          ? t.taskAttachmentUploading
-                          : t.taskAttachmentUploadButton,
+                      _uploadingAttachment ? t.taskAttachmentUploading : t.taskAttachmentUploadButton,
                     ),
                   ),
               ],
@@ -742,18 +827,14 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.insert_drive_file),
                     title: Text(a.fileName),
-                    subtitle: Text(
-                      '${_formatBytes(a.size)} · ${a.uploadedBy ?? '-'}',
-                    ),
+                    subtitle: Text('${_formatBytes(a.size)} · ${a.uploadedBy ?? '-'}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
                           tooltip: t.taskAttachmentOpenButton,
                           icon: const Icon(Icons.open_in_new),
-                          onPressed: _downloadingAttachment
-                              ? null
-                              : () => _downloadAndOpenAttachment(a),
+                          onPressed: _downloadingAttachment ? null : () => _downloadAndOpenAttachment(a),
                         ),
                         if (canEdit)
                           IconButton(
@@ -769,10 +850,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
             const SizedBox(height: 24),
 
-            Text(
-              t.taskAuditLogTitle,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            // AUDIT LOG
+            Text(t.taskAuditLogTitle, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             if (_loadingAudit)
               const LinearProgressIndicator()
@@ -783,24 +862,14 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 children: _auditEntries.map((e) {
                   final ts = _formatDateTime(e.timestamp);
                   final field = _localizedAuditField(t, e.fieldName);
-                  final oldVal = _localizedAuditValue(
-                    t,
-                    e.fieldName,
-                    e.oldValue,
-                  );
-                  final newVal = _localizedAuditValue(
-                    t,
-                    e.fieldName,
-                    e.newValue,
-                  );
+                  final oldVal = _localizedAuditValue(t, e.fieldName, e.oldValue);
+                  final newVal = _localizedAuditValue(t, e.fieldName, e.newValue);
 
                   return ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     title: Text('$ts · $field: $oldVal → $newVal'),
-                    subtitle: e.actor != null && e.actor!.isNotEmpty
-                        ? Text(t.taskAuditBy(e.actor!))
-                        : null,
+                    subtitle: e.actor != null && e.actor!.isNotEmpty ? Text(t.taskAuditBy(e.actor!)) : null,
                   );
                 }).toList(),
               ),
@@ -835,26 +904,16 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          t.taskFieldStatusLabel,
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
+        Text(t.taskFieldStatusLabel, style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 4),
         DropdownButtonFormField<String>(
           value: _task.status,
           items: [
             DropdownMenuItem(value: 'OPEN', child: Text(t.taskStatusOpen)),
-            DropdownMenuItem(
-              value: 'IN_PROGRESS',
-              child: Text(t.taskStatusInProgress),
-            ),
+            DropdownMenuItem(value: 'IN_PROGRESS', child: Text(t.taskStatusInProgress)),
             DropdownMenuItem(value: 'DONE', child: Text(t.taskStatusDone)),
           ],
-          onChanged: canEdit
-              ? (value) {
-                  if (value != null) _onChangeStatus(context, value);
-                }
-              : null,
+          onChanged: canEdit ? (value) { if (value != null) _onChangeStatus(context, value); } : null,
         ),
       ],
     );
@@ -864,26 +923,16 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          t.taskFieldPriorityLabel,
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
+        Text(t.taskFieldPriorityLabel, style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 4),
         DropdownButtonFormField<String>(
           value: _task.priority,
           items: [
             DropdownMenuItem(value: 'LOW', child: Text(t.taskPriorityLow)),
-            DropdownMenuItem(
-              value: 'MEDIUM',
-              child: Text(t.taskPriorityMedium),
-            ),
+            DropdownMenuItem(value: 'MEDIUM', child: Text(t.taskPriorityMedium)),
             DropdownMenuItem(value: 'HIGH', child: Text(t.taskPriorityHigh)),
           ],
-          onChanged: canEdit
-              ? (value) {
-                  if (value != null) _onChangePriority(context, value);
-                }
-              : null,
+          onChanged: canEdit ? (value) { if (value != null) _onChangePriority(context, value); } : null,
         ),
       ],
     );
