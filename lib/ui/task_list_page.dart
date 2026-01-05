@@ -21,7 +21,7 @@ enum _TaskSortDir { asc, desc }
 class TaskListPage extends StatefulWidget {
   final int workspaceId;
   final String workspaceName;
-  final String workspaceRole; // OWNER / MEMBER / VIEWER
+  final String workspaceRole;
   final void Function(Locale locale) onChangeLanguage;
   final RealtimeService realtimeService;
 
@@ -44,10 +44,9 @@ class _TaskListPageState extends State<TaskListPage> {
     return r == 'OWNER' || r == 'MEMBER';
   }
 
-  // --- Search / filter / sort state ---
   final TextEditingController _searchController = TextEditingController();
-  String? _statusFilter;   // null = all
-  String? _priorityFilter; // null = all
+  String? _statusFilter;
+  String? _priorityFilter;
   _TaskSortField _sortField = _TaskSortField.title;
   _TaskSortDir _sortDir = _TaskSortDir.asc;
 
@@ -109,7 +108,6 @@ class _TaskListPageState extends State<TaskListPage> {
     super.dispose();
   }
 
-  // --- Filtering + sorting ---
   List<TaskItem> _applySearchFilterSort(List<TaskItem> tasks) {
     final q = _searchController.text.trim().toLowerCase();
 
@@ -375,7 +373,6 @@ class _TaskListPageState extends State<TaskListPage> {
 
                                 if (!innerContext.mounted) return;
 
-                                // refresh anyway (or when deleted)
                                 if (result == true) {
                                   innerContext.read<TaskBloc>().add(
                                         TaskLoadRequested(widget.workspaceId),

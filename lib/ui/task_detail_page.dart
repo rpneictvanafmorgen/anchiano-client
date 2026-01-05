@@ -51,7 +51,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   bool _loadingAttachments = true;
   bool _uploadingAttachment = false;
 
-  // COMMENTS
   List<TaskCommentItem> _comments = [];
   bool _loadingComments = true;
   bool _postingComment = false;
@@ -135,7 +134,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       },
     );
 
-    // COMMENTS realtime
     _unsubComments = widget.realtimeService.subscribeComments(
       widget.workspaceId,
       onEvent: (payload) {
@@ -144,7 +142,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         if (taskId == null) return;
         if (taskId == _task.id) {
           _loadComments();
-          // jouw backend logt comment ook naar audit, dus audit kan mee:
           _loadAuditLog();
         }
       },
@@ -410,7 +407,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       case 'attachment':
         return t.taskAttachmentsTitle;
       case 'comment':
-        // voeg eventueel later een echte vertaling toe in l10n
         return 'Comments';
       default:
         return fieldName;
@@ -574,7 +570,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
   }
 
-  // COMMENTS
   Future<void> _loadComments() async {
     setState(() => _loadingComments = true);
     try {
@@ -737,7 +732,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
             const SizedBox(height: 24),
 
-            // COMMENTS SECTION
             Text('Comments', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
 
@@ -797,7 +791,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
             const SizedBox(height: 24),
 
-            // ATTACHMENTS SECTION
             Text(t.taskAttachmentsTitle, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
 
@@ -850,7 +843,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
             const SizedBox(height: 24),
 
-            // AUDIT LOG
             Text(t.taskAuditLogTitle, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             if (_loadingAudit)
