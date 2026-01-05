@@ -20,25 +20,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:anchiano_client/l10n/app_localizations.dart';
 
 void main() {
-  final apiClient = ApiClient();
-  final authRepository = AuthRepository(apiClient);
-  final workspaceRepository = WorkspaceRepository(apiClient);
-
-  runApp(MyApp(
-    authRepository: authRepository,
-    workspaceRepository: workspaceRepository,
-  ));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
-  final AuthRepository authRepository;
-  final WorkspaceRepository workspaceRepository;
-
-  const MyApp({
-    super.key,
-    required this.authRepository,
-    required this.workspaceRepository,
-  });
+  const MyApp({super.key});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -48,18 +34,42 @@ class _MyAppState extends State<MyApp> {
   final ValueNotifier<Locale?> currentLocale = ValueNotifier<Locale?>(null);
   final RealtimeService realtimeService = RealtimeService();
 
-  bool _realtimeConnected = false;
+  late final ApiClient apiClient;
+  late final AuthRepository authRepository;
+  late final WorkspaceRepository workspaceRepository;
 
+  bool _realtimeConnected = false;
   void Function()? _unsubMyWorkspaces;
 
   void changeLanguage(Locale locale) {
     currentLocale.value = locale;
   }
 
+  @override
+  void initState() {
+    super.initState();
+
+    apiClient = ApiClient(
+      onUnauthorized: () async {
+        // Interceptor wist JWT al. Wij zorgen hier dat de app state mee kantelt.
+        if (!mounted) return;
+
+        // Realtime uit (anders blijf je met een verlopen token "half connected")
+        _disconnectRealtime();
+
+        // Laat AuthBloc opnieuw checken -> gaat dan AuthUnauthenticated emitten
+        context.read<AuthBloc>().add(AuthAppStarted());
+      },
+    );
+
+    authRepository = AuthRepository(apiClient);
+    workspaceRepository = WorkspaceRepository(apiClient);
+  }
+
   Future<void> _connectRealtimeIfNeeded() async {
     if (_realtimeConnected && realtimeService.isConnected) return;
 
-    final token = await widget.authRepository.getToken();
+    final token = await authRepository.getToken();
     if (token == null || token.isEmpty) return;
 
     // Android emulator: http://10.0.2.2:8080
@@ -107,19 +117,16 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<AuthRepository>.value(value: widget.authRepository),
-        RepositoryProvider<WorkspaceRepository>.value(
-          value: widget.workspaceRepository,
-        ),
+        RepositoryProvider<AuthRepository>.value(value: authRepository),
+        RepositoryProvider<WorkspaceRepository>.value(value: workspaceRepository),
       ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
-            create: (_) =>
-                AuthBloc(widget.authRepository)..add(AuthAppStarted()),
+            create: (_) => AuthBloc(authRepository)..add(AuthAppStarted()),
           ),
           BlocProvider(
-            create: (_) => WorkspaceBloc(widget.workspaceRepository),
+            create: (_) => WorkspaceBloc(workspaceRepository),
           ),
         ],
         child: ValueListenableBuilder<Locale?>(

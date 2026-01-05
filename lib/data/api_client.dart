@@ -3,13 +3,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config.dart';
 
+typedef UnauthorizedCallback = void Function();
+
 class ApiClient {
   final Dio _dio;
   final FlutterSecureStorage _secureStorage;
 
   ApiClient._(this._dio, this._secureStorage);
 
-  factory ApiClient() {
+  factory ApiClient({
+    UnauthorizedCallback? onUnauthorized,
+  }) {
     final dio = Dio(
       BaseOptions(
         baseUrl: AppConfig.baseUrl,
@@ -27,10 +31,22 @@ class ApiClient {
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
-          return handler.next(options);
+          handler.next(options);
         },
-        onError: (error, handler) {
-          return handler.next(error);
+
+        onError: (DioException error, handler) async {
+          final status = error.response?.statusCode;
+
+          if (status == 401) {
+            
+            await storage.delete(key: 'jwt');
+
+            if (onUnauthorized != null) {
+              onUnauthorized();
+            }
+          }
+
+          handler.next(error);
         },
       ),
     );
